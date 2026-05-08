@@ -11,7 +11,11 @@ type Props = {
 
 export default function ResultPage({ params }: Props) {
   const [result, setResult] = useState<AuditResult | null>(null);
-
+const [email, setEmail] = useState("");
+const [role, setRole] = useState("");
+const [companyName, setCompanyName] = useState("");
+const [honeypot, setHoneypot] = useState("");
+const [leadStatus, setLeadStatus] = useState("");
   useEffect(() => {
     params.then((resolved) => {
       const saved = localStorage.getItem(`credex-audit-${resolved.id}`);
@@ -21,7 +25,33 @@ export default function ResultPage({ params }: Props) {
       }
     });
   }, [params]);
+async function submitLead() {
+  if (!result) return;
 
+  setLeadStatus("Saving...");
+
+  const response = await fetch("/api/lead", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email,
+      role,
+      companyName,
+      teamSize: result.teamSize,
+      auditId: result.id,
+      totalMonthlySavings: result.totalMonthlySavings,
+      honeypot
+    })
+  });
+
+  if (response.ok) {
+    setLeadStatus("Done! Your email has been saved.");
+  } else {
+    setLeadStatus("Something went wrong. Please check your email and try again.");
+  }
+}
   if (!result) {
     return (
       <main className="min-h-screen bg-slate-950 p-6 text-white">
@@ -167,6 +197,55 @@ export default function ResultPage({ params }: Props) {
             ))}
           </div>
         </div>
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/10 p-6">
+  <h2 className="text-2xl font-black">Capture the report</h2>
+
+  <p className="mt-2 text-slate-300">
+    Email is asked only after showing value. This keeps the audit useful before lead capture.
+  </p>
+
+  <input
+    className="hidden"
+    value={honeypot}
+    onChange={(event) => setHoneypot(event.target.value)}
+    placeholder="Leave this blank"
+  />
+
+  <label className="mt-4 block text-sm font-bold">Email</label>
+  <input
+    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
+    value={email}
+    onChange={(event) => setEmail(event.target.value)}
+    placeholder="you@company.com"
+  />
+
+  <label className="mt-4 block text-sm font-bold">Company name</label>
+  <input
+    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
+    value={companyName}
+    onChange={(event) => setCompanyName(event.target.value)}
+    placeholder="Optional"
+  />
+
+  <label className="mt-4 block text-sm font-bold">Role</label>
+  <input
+    className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
+    value={role}
+    onChange={(event) => setRole(event.target.value)}
+    placeholder="Founder / CTO / Engineering Manager"
+  />
+
+  <button
+    onClick={submitLead}
+    className="mt-5 w-full rounded-xl bg-emerald-400 px-5 py-3 font-black text-slate-950"
+  >
+    Email my report
+  </button>
+
+  {leadStatus && (
+    <p className="mt-4 text-sm text-emerald-200">{leadStatus}</p>
+  )}
+</div>
       </section>
     </main>
   );
