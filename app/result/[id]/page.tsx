@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { use, useState } from "react";
 import type { AuditResult } from "@/lib/audit";
 
 type Props = {
@@ -9,22 +10,35 @@ type Props = {
   }>;
 };
 
+function getSavedResult(id: string): AuditResult | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const saved = localStorage.getItem(`credex-audit-${id}`);
+
+  if (!saved) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(saved) as AuditResult;
+  } catch {
+    localStorage.removeItem(`credex-audit-${id}`);
+    return null;
+  }
+}
+
 export default function ResultPage({ params }: Props) {
-  const [result, setResult] = useState<AuditResult | null>(null);
+  const resolvedParams = use(params);
+  const [result] = useState<AuditResult | null>(() =>
+    getSavedResult(resolvedParams.id)
+  );
+
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [leadStatus, setLeadStatus] = useState("");
-
-  useEffect(() => {
-    params.then((resolved) => {
-      const saved = localStorage.getItem(`credex-audit-${resolved.id}`);
-
-      if (saved) {
-        setResult(JSON.parse(saved));
-      }
-    });
-  }, [params]);
 
   async function copyLink() {
     await navigator.clipboard.writeText(window.location.href);
@@ -69,12 +83,12 @@ export default function ResultPage({ params }: Props) {
             Please go back and generate a new audit.
           </p>
 
-          <a
+          <Link
             href="/"
             className="mt-6 inline-block rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950"
           >
             Run new audit
-          </a>
+          </Link>
         </div>
       </main>
     );
@@ -87,9 +101,9 @@ export default function ResultPage({ params }: Props) {
     <main className="min-h-screen bg-slate-950 text-white">
       <section className="mx-auto max-w-6xl px-5 py-8">
         <nav className="flex items-center justify-between">
-          <a href="/" className="text-2xl font-bold">
+          <Link href="/" className="text-2xl font-bold">
             StackLeak Audit
-          </a>
+          </Link>
 
           <button
             type="button"

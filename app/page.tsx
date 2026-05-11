@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { vendors, getPlansForVendor } from "@/data/pricing";
-import { runAudit, type AuditInput, type SpendTool, type UseCase } from "@/lib/audit";
+import {
+  runAudit,
+  type AuditInput,
+  type SpendTool,
+  type UseCase
+} from "@/lib/audit";
 
 const defaultForm: AuditInput = {
   companyName: "",
@@ -27,22 +32,29 @@ const defaultForm: AuditInput = {
   ]
 };
 
+function getInitialForm(): AuditInput {
+  if (typeof window === "undefined") {
+    return defaultForm;
+  }
+
+  const saved = localStorage.getItem("credex-audit-form");
+
+  if (!saved) {
+    return defaultForm;
+  }
+
+  try {
+    return JSON.parse(saved) as AuditInput;
+  } catch {
+    localStorage.removeItem("credex-audit-form");
+    return defaultForm;
+  }
+}
+
 export default function Home() {
-  const [form, setForm] = useState<AuditInput>(defaultForm);
+  const [form, setForm] = useState<AuditInput>(getInitialForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("credex-audit-form");
-
-    if (saved) {
-      try {
-        setForm(JSON.parse(saved));
-      } catch {
-        localStorage.removeItem("credex-audit-form");
-      }
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("credex-audit-form", JSON.stringify(form));
@@ -121,6 +133,32 @@ export default function Home() {
     });
   }
 
+  function validateForm(cleanForm: AuditInput) {
+    if (cleanForm.teamSize < 1 || Number.isNaN(cleanForm.teamSize)) {
+      return "Team size must be at least 1.";
+    }
+
+    if (cleanForm.tools.length === 0) {
+      return "Please add at least one AI tool.";
+    }
+
+    for (const tool of cleanForm.tools) {
+      if (!tool.vendor || !tool.plan) {
+        return "Please select tool and plan for every row.";
+      }
+
+      if (tool.seats < 1 || Number.isNaN(tool.seats)) {
+        return `${tool.vendor} seats must be at least 1.`;
+      }
+
+      if (tool.monthlySpend < 0 || Number.isNaN(tool.monthlySpend)) {
+        return `${tool.vendor} monthly spend cannot be negative.`;
+      }
+    }
+
+    return "";
+  }
+
   function submitAudit() {
     setError("");
     setLoading(true);
@@ -136,14 +174,10 @@ export default function Home() {
         }))
       };
 
-      if (cleanForm.teamSize < 1) {
-        setError("Team size must be at least 1.");
-        setLoading(false);
-        return;
-      }
+      const validationError = validateForm(cleanForm);
 
-      if (cleanForm.tools.length === 0) {
-        setError("Please add at least one AI tool.");
+      if (validationError) {
+        setError(validationError);
         setLoading(false);
         return;
       }
@@ -156,8 +190,8 @@ export default function Home() {
       );
 
       window.location.href = `/result/${result.id}`;
-    } catch (error) {
-      console.error("Audit generation error:", error);
+    } catch (auditError) {
+      console.error("Audit generation error:", auditError);
       setError("Something went wrong while generating the audit.");
       setLoading(false);
     }
@@ -230,12 +264,13 @@ export default function Home() {
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
               placeholder="Example: Acme AI"
               value={form.companyName}
-              onChange={(event) =>
+              onChange={(event) => {
+                setError("");
                 setForm({
                   ...form,
                   companyName: event.target.value
-                })
-              }
+                });
+              }}
             />
 
             <label className="mt-5 block text-sm font-semibold">
@@ -246,12 +281,13 @@ export default function Home() {
               type="number"
               min={1}
               value={form.teamSize}
-              onChange={(event) =>
+              onChange={(event) => {
+                setError("");
                 setForm({
                   ...form,
                   teamSize: Number(event.target.value) || 1
-                })
-              }
+                });
+              }}
             />
 
             <label className="mt-5 block text-sm font-semibold">
@@ -260,12 +296,13 @@ export default function Home() {
             <select
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
               value={form.primaryUseCase}
-              onChange={(event) =>
+              onChange={(event) => {
+                setError("");
                 setForm({
                   ...form,
                   primaryUseCase: event.target.value as UseCase
-                })
-              }
+                });
+              }}
             >
               <option value="coding">Coding</option>
               <option value="writing">Writing</option>
