@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { vendors, getPlansForVendor } from "@/data/pricing";
-import type { AuditInput, SpendTool, UseCase } from "@/lib/audit";
+import { runAudit, type AuditInput, type SpendTool, type UseCase } from "@/lib/audit";
 
 const defaultForm: AuditInput = {
   companyName: "",
@@ -30,11 +30,17 @@ const defaultForm: AuditInput = {
 export default function Home() {
   const [form, setForm] = useState<AuditInput>(defaultForm);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const saved = localStorage.getItem("credex-audit-form");
+
     if (saved) {
-      setForm(JSON.parse(saved));
+      try {
+        setForm(JSON.parse(saved));
+      } catch {
+        localStorage.removeItem("credex-audit-form");
+      }
     }
   }, []);
 
@@ -43,17 +49,12 @@ export default function Home() {
   }, [form]);
 
   function updateTool(id: string, field: keyof SpendTool, value: string) {
+    setError("");
+
     setForm((current) => ({
       ...current,
       tools: current.tools.map((tool) => {
         if (tool.id !== id) return tool;
-
-        if (field === "monthlySpend" || field === "seats") {
-          return {
-            ...tool,
-            [field]: Number(value)
-          };
-        }
 
         if (field === "vendor") {
           const firstPlan = getPlansForVendor(value)[0]?.plan || "Pro";
@@ -62,6 +63,20 @@ export default function Home() {
             ...tool,
             vendor: value,
             plan: firstPlan
+          };
+        }
+
+        if (field === "monthlySpend") {
+          return {
+            ...tool,
+            monthlySpend: Number(value) || 0
+          };
+        }
+
+        if (field === "seats") {
+          return {
+            ...tool,
+            seats: Number(value) || 1
           };
         }
 
@@ -74,6 +89,8 @@ export default function Home() {
   }
 
   function addTool() {
+    setError("");
+
     setForm((current) => ({
       ...current,
       tools: [
@@ -90,31 +107,60 @@ export default function Home() {
   }
 
   function removeTool(id: string) {
-    setForm((current) => ({
-      ...current,
-      tools: current.tools.filter((tool) => tool.id !== id)
-    }));
+    setError("");
+
+    setForm((current) => {
+      if (current.tools.length <= 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        tools: current.tools.filter((tool) => tool.id !== id)
+      };
+    });
   }
 
-  async function submitAudit() {
+  function submitAudit() {
+    setError("");
     setLoading(true);
 
-    const response = await fetch("/api/audit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(form)
-    });
+    try {
+      const cleanForm: AuditInput = {
+        ...form,
+        teamSize: Number(form.teamSize) || 1,
+        tools: form.tools.map((tool) => ({
+          ...tool,
+          monthlySpend: Number(tool.monthlySpend) || 0,
+          seats: Number(tool.seats) || 1
+        }))
+      };
 
-    const data = await response.json();
+      if (cleanForm.teamSize < 1) {
+        setError("Team size must be at least 1.");
+        setLoading(false);
+        return;
+      }
 
-    localStorage.setItem(
-      `credex-audit-${data.result.id}`,
-      JSON.stringify(data.result)
-    );
+      if (cleanForm.tools.length === 0) {
+        setError("Please add at least one AI tool.");
+        setLoading(false);
+        return;
+      }
 
-    window.location.href = `/result/${data.result.id}`;
+      const result = runAudit(nanoid(10), cleanForm);
+
+      localStorage.setItem(
+        `credex-audit-${result.id}`,
+        JSON.stringify(result)
+      );
+
+      window.location.href = `/result/${result.id}`;
+    } catch (error) {
+      console.error("Audit generation error:", error);
+      setError("Something went wrong while generating the audit.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -171,6 +217,12 @@ export default function Home() {
           <div className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
             <h2 className="text-2xl font-bold">Run your audit</h2>
 
+            {error && (
+              <p className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-100">
+                {error}
+              </p>
+            )}
+
             <label className="mt-5 block text-sm font-semibold">
               Company name
             </label>
@@ -179,7 +231,10 @@ export default function Home() {
               placeholder="Example: Acme AI"
               value={form.companyName}
               onChange={(event) =>
-                setForm({ ...form, companyName: event.target.value })
+                setForm({
+                  ...form,
+                  companyName: event.target.value
+                })
               }
             />
 
@@ -189,9 +244,13 @@ export default function Home() {
             <input
               className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 p-3"
               type="number"
+              min={1}
               value={form.teamSize}
               onChange={(event) =>
-                setForm({ ...form, teamSize: Number(event.target.value) })
+                setForm({
+                  ...form,
+                  teamSize: Number(event.target.value) || 1
+                })
               }
             />
 
@@ -219,6 +278,7 @@ export default function Home() {
               <h3 className="font-bold">AI tools</h3>
 
               <button
+                type="button"
                 onClick={addTool}
                 className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold"
               >
@@ -264,6 +324,7 @@ export default function Home() {
                     <input
                       className="rounded-xl border border-white/10 bg-slate-950 p-3"
                       type="number"
+                      min={0}
                       placeholder="Monthly spend"
                       value={tool.monthlySpend}
                       onChange={(event) =>
@@ -274,6 +335,7 @@ export default function Home() {
                     <input
                       className="rounded-xl border border-white/10 bg-slate-950 p-3"
                       type="number"
+                      min={1}
                       placeholder="Seats"
                       value={tool.seats}
                       onChange={(event) =>
@@ -284,6 +346,7 @@ export default function Home() {
 
                   {form.tools.length > 1 && (
                     <button
+                      type="button"
                       onClick={() => removeTool(tool.id)}
                       className="mt-3 text-sm text-red-300"
                     >
@@ -295,9 +358,10 @@ export default function Home() {
             </div>
 
             <button
+              type="button"
               onClick={submitAudit}
               disabled={loading}
-              className="mt-6 w-full rounded-xl bg-emerald-400 px-5 py-4 font-black text-slate-950"
+              className="mt-6 w-full rounded-xl bg-emerald-400 px-5 py-4 font-black text-slate-950 disabled:opacity-60"
             >
               {loading ? "Generating audit..." : "Generate audit"}
             </button>
