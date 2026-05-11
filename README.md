@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StackLeak Audit
 
-## Getting Started
+StackLeak Audit is a simple AI spend audit tool for startup teams. It helps founders and engineering managers check whether they are overspending on AI tools like Cursor, ChatGPT, Claude, GitHub Copilot, Gemini, OpenAI API, Anthropic API, and Windsurf.
 
-First, run the development server:
+The user enters their team size, use case, AI tools, monthly spend, and number of seats. The app then shows estimated monthly savings, yearly savings, and tool-wise recommendations.
+
+Live URL: ADD_YOUR_DEPLOYED_URL_HERE
+
+## Why I built this
+
+Many small teams start using AI tools quickly, but they do not always review the total monthly spend. A few unused seats or expensive plans can quietly become a recurring cost. This project tries to make that waste visible in a simple way.
+
+## Features
+
+- AI spend input form
+- Tool and plan selection
+- Monthly spend and seats input
+- Savings calculation
+- Result page with monthly and annual savings
+- Per-tool recommendations
+- Lead capture after showing the result
+- AI summary fallback API
+- 5 tests for the audit engine
+- GitHub Actions CI workflow
+
+## Tech Stack
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- Vitest
+- GitHub Actions
+- Optional Supabase
+- Optional Resend
+- Optional Anthropic API
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
